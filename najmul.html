@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biri Najmul - The Endless Runner</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #2c3e50;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        canvas {
+            background-color: #87CEEB;
+            border: 4px solid #34495e;
+            border-radius: 10px;
+            box-shadow: 0px 0px 20px rgba(0,0,0,0.5);
+        }
+        #instructions {
+            margin-top: 15px;
+            font-size: 18px;
+        }
+        button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #c0392b;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🚬 Biri Najmul's Highway Run 🏍️</h1>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    
+    <div id="instructions">
+        <p>Press <b>SPACE</b> or <b>TAP</b> to Jump!</p>
+        <p>Collect 🚬 | Avoid 🥦 & 💪 | Reach 15 points to win the Ultimate Prize!</p>
+    </div>
+    <button onclick="resetGame()">Restart Game</button>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        let score = 0;
+        let gameOver = false;
+        let gameWon = false;
+        let frames = 0;
+        let animationId;
+
+        // Player (Biri Najmul)
+        const player = {
+            x: 50,
+            y: 300,
+            width: 40,
+            height: 40,
+            dy: 0,
+            gravity: 0.8,
+            jumpPower: -14,
+            isGrounded: true
+        };
+
+        const items = [];
+        const emojis = {
+            biri: "🚬",
+            obstacle1: "🥦",
+            obstacle2: "💪",
+            prize: "🌿"
+        };
+
+        // Controls
+        window.addEventListener("keydown", function(e) {
+            if ((e.code === "Space" || e.code === "ArrowUp") && player.isGrounded && !gameOver && !gameWon) {
+                player.dy = player.jumpPower;
+                player.isGrounded = false;
+            }
+        });
+
+        canvas.addEventListener("touchstart", function() {
+            if (player.isGrounded && !gameOver && !gameWon) {
+                player.dy = player.jumpPower;
+                player.isGrounded = false;
+            }
+        });
+
+        function spawnItem() {
+            if (frames % 90 === 0) {
+                let type = Math.random() < 0.6 ? "biri" : "obstacle";
+                let yPos = type === "biri" ? 220 + Math.random() * 50 : 310;
+                let emoji = type === "biri" ? emojis.biri : (Math.random() < 0.5 ? emojis.obstacle1 : emojis.obstacle2);
+                
+                items.push({
+                    x: canvas.width,
+                    y: yPos,
+                    width: 30,
+                    height: 30,
+                    type: type,
+                    emoji: emoji,
+                    speed: 6 + (score * 0.2) // Speed increases slightly with score
+                });
+            }
+        }
+
+        function update() {
+            if (gameOver || gameWon) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Road
+            ctx.fillStyle = "#555";
+            ctx.fillRect(0, 340, canvas.width, 60);
+
+            // Apply gravity to player
+            player.dy += player.gravity;
+            player.y += player.dy;
+
+            // Floor collision
+            if (player.y >= 300) {
+                player.y = 300;
+                player.isGrounded = true;
+                player.dy = 0;
+            }
+
+            // Draw Player
+            ctx.font = "40px Arial";
+            ctx.fillText("🏍️", player.x, player.y + 35);
+            ctx.font = "14px Arial";
+            ctx.fillStyle = "black";
+            ctx.fillText("Najmul", player.x - 5, player.y - 5);
+
+            // Update and draw items
+            for (let i = 0; i < items.length; i++) {
+                let item = items[i];
+                item.x -= item.speed;
+
+                ctx.font = "30px Arial";
+                ctx.fillText(item.emoji, item.x, item.y + 25);
+
+                // Collision Detection
+                if (
+                    player.x < item.x + item.width &&
+                    player.x + player.width > item.x &&
+                    player.y < item.y + item.height &&
+                    player.y + player.height > item.y
+                ) {
+                    if (item.type === "obstacle") {
+                        gameOver = true;
+                    } else if (item.type === "biri") {
+                        score++;
+                        items.splice(i, 1);
+                        i--;
+                        
+                        if (score >= 15) {
+                            gameWon = true;
+                        }
+                    }
+                }
+            }
+
+            // Remove off-screen items
+            if (items.length > 0 && items[0].x < -50) {
+                items.shift();
+            }
+
+            // Draw Score
+            ctx.fillStyle = "black";
+            ctx.font = "24px Arial";
+            ctx.fontWeight = "bold";
+            ctx.fillText("Score (Biris): " + score + "/15", 20, 40);
+
+            spawnItem();
+            frames++;
+
+            if (gameOver) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "red";
+                ctx.font = "40px Arial";
+                ctx.fillText("💥 CRASHED! 💥", 250, 180);
+                ctx.fillStyle = "white";
+                ctx.font = "25px Arial";
+                ctx.fillText("Healthy things ruined the vibe!", 220, 230);
+            } else if (gameWon) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#2ecc71";
+                ctx.font = "50px Arial";
+                ctx.fillText("🏆 YOU WIN! 🏆", 220, 160);
+                ctx.font = "80px Arial";
+                ctx.fillText(emojis.prize, 350, 260);
+                ctx.fillStyle = "white";
+                ctx.font = "25px Arial";
+                ctx.fillText("Ultimate Ganja Prize Unlocked!", 220, 320);
+            } else {
+                animationId = requestAnimationFrame(update);
+            }
+        }
+
+        function resetGame() {
+            cancelAnimationFrame(animationId);
+            score = 0;
+            gameOver = false;
+            gameWon = false;
+            frames = 0;
+            items.length = 0;
+            player.y = 300;
+            player.dy = 0;
+            update();
+        }
+
+        // Start game loop
+        update();
+    </script>
+</body>
+</html>
